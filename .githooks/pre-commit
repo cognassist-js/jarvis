@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+# Block commits that contain personal data or secrets.
+# Activated via `git config core.hooksPath .githooks` (see README).
+
+set -e
+
+# Files staged for this commit (added, copied, modified, renamed).
+staged="$(git diff --cached --name-only --diff-filter=ACMR)"
+
+if [ -z "$staged" ]; then
+  exit 0
+fi
+
+block() {
+  echo ""
+  echo "  ✕ pre-commit blocked this commit"
+  echo ""
+  echo "    The following staged file(s) look like personal data or secrets:"
+  echo ""
+  while IFS= read -r f; do
+    [ -n "$f" ] && echo "      • $f"
+  done <<< "$1"
+  echo ""
+  echo "    If this is intentional, bypass with:  git commit --no-verify"
+  echo "    Otherwise:                            git restore --staged <file>"
+  echo ""
+  exit 1
+}
+
+# 1. SQLite databases and their WAL/SHM siblings — anywhere in the tree.
+db_hits="$(echo "$staged" | grep -E '\.(db|db-shm|db-wal|sqlite|sqlite3)$' || true)"
+if [ -n "$db_hits" ]; then
+  block "$db_hits"
+fi
+
+# 2. Env files — block every .env* except the *.example templates.
+env_hits="$(echo "$staged" | grep -E '(^|/)\.env($|\.)' | grep -vE '\.example$' || true)"
+if [ -n "$env_hits" ]; then
+  block "$env_hits"
+fi
+
+# 3. Belt and braces: anything inside a top-level data/ directory.
+data_hits="$(echo "$staged" | grep -E '(^|/)data/' || true)"
+if [ -n "$data_hits" ]; then
+  block "$data_hits"
+fi
+
+exit 0

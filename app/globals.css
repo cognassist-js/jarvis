@@ -1,26 +1,159 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+@theme {
+  /* Clay / Ocean palette */
+  --color-bg: #ecf6ff;
+  --color-bg-2: #dceeff;
+
+  --color-clay-sky: #9ec6fa;
+  --color-clay-deep: #6ba6f5;
+  --color-clay-deep-2: #4783db;
+  --color-clay-mint: #a8e6d4;
+  --color-clay-aqua: #6dd5c7;
+  --color-clay-lilac: #c8b5f5;
+  --color-clay-lavender: #a995ec;
+  --color-clay-coral: #f59a98;
+  --color-clay-coral-2: #ef7472;
+  --color-clay-butter: #ffe8a0;
+
+  --color-ink: #1a2e58;
+  --color-ink-mid: #4f6080;
+  --color-ink-dim: #8590ac;
+  --color-ink-faint: #b8c0d4;
+
+  --font-display: "Fraunces", ui-serif, Georgia, serif;
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+
+  --radius-clay-sm: 14px;
+  --radius-clay-md: 18px;
+  --radius-clay-lg: 22px;
+  --radius-clay-xl: 28px;
+  --radius-clay-2xl: 36px;
+  --radius-clay-3xl: 42px;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
+@layer base {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --shadow-clay-soft: 0 14px 28px -8px rgba(45, 75, 156, 0.22);
+    --shadow-clay-strong: 0 18px 38px -10px rgba(45, 75, 156, 0.3);
+    --highlight-clay: inset 0 3px 0 rgba(255, 255, 255, 0.7),
+      inset 0 -3px 6px rgba(45, 75, 156, 0.08);
+  }
+
+  html,
+  body {
+    height: 100%;
+  }
+  html {
+    color-scheme: light;
+  }
+  body {
+    font-family: var(--font-sans);
+    color: var(--color-ink);
+    font-size: 14px;
+    line-height: 1.45;
+    background:
+      radial-gradient(circle at 10% 10%, var(--color-clay-mint) 0%, transparent 30%),
+      radial-gradient(circle at 90% 15%, var(--color-clay-lilac) 0%, transparent 30%),
+      radial-gradient(circle at 80% 90%, var(--color-clay-sky) 0%, transparent 35%),
+      radial-gradient(circle at 20% 85%, var(--color-clay-aqua) 0%, transparent 30%),
+      var(--color-bg);
+    background-attachment: fixed;
+    min-height: 100vh;
+  }
+
+  /* Dark mode — same hues, darker base */
+  html.dark {
+    color-scheme: dark;
+    --color-bg: #0c1830;
+    --color-bg-2: #14224a;
+    --color-ink: #e6efff;
+    --color-ink-mid: #a6b6d6;
+    --color-ink-dim: #6b7ba0;
+    --color-ink-faint: #3d4a6b;
+  }
+  html.dark body {
+    background:
+      radial-gradient(circle at 10% 10%, rgba(109, 213, 199, 0.18) 0%, transparent 30%),
+      radial-gradient(circle at 90% 15%, rgba(169, 149, 236, 0.22) 0%, transparent 30%),
+      radial-gradient(circle at 80% 90%, rgba(107, 166, 245, 0.22) 0%, transparent 35%),
+      radial-gradient(circle at 20% 85%, rgba(109, 213, 199, 0.16) 0%, transparent 30%),
+      var(--color-bg);
+  }
+
+  *::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  *::-webkit-scrollbar-thumb {
+    background: rgba(45, 75, 156, 0.15);
+    border-radius: 3px;
+  }
+  html.dark *::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.12);
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@utility clay-surface {
+  background: white;
+  border-radius: var(--radius-clay-2xl);
+  box-shadow:
+    var(--shadow-clay-soft),
+    var(--highlight-clay);
+}
+@utility clay-card {
+  background: white;
+  border-radius: var(--radius-clay-lg);
+  box-shadow:
+    0 10px 20px -6px rgba(45, 75, 156, 0.18),
+    inset 0 3px 0 rgba(255, 255, 255, 0.9),
+    inset 0 -3px 6px rgba(45, 75, 156, 0.06);
+}
+@utility clay-inset {
+  background: var(--color-bg);
+  box-shadow: inset 0 2px 4px rgba(45, 75, 156, 0.1);
+}
+
+html.dark .clay-surface,
+html.dark .clay-card {
+  background: rgba(255, 255, 255, 0.05);
+  box-shadow:
+    0 14px 28px -8px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(12px);
+}
+html.dark .clay-inset {
+  background: rgba(255, 255, 255, 0.05);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.45);
+}
+
+@keyframes clay-float {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-4px) rotate(3deg);
+  }
+}
+@keyframes clay-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.15);
+  }
+}
+
+.clay-float {
+  animation: clay-float 4s ease-in-out infinite;
+}
+.clay-pulse {
+  animation: clay-pulse 2s ease-in-out infinite;
+}
+
+/* Sonner / toast tweaks */
+[data-sonner-toaster] {
+  font-family: var(--font-sans);
 }
