@@ -79,12 +79,34 @@ export function TaskCard({
       </div>
       <h4
         className={cn(
-          "font-display text-[17px] font-bold leading-[1.22] mb-3 text-[var(--color-ink)] tracking-[-0.015em]",
+          "font-display text-[17px] font-bold leading-[1.22] mb-2 text-[var(--color-ink)] tracking-[-0.015em]",
           isDone && "line-through decoration-2 text-[var(--color-ink-dim)]",
         )}
       >
         {task.title}
       </h4>
+      {project?.tags && project.tags.length > 0 && (
+        <div className="flex flex-wrap gap-1 mb-2.5">
+          {project.tags.slice(0, 3).map((t) => (
+            <span
+              key={t}
+              className="inline-flex items-center px-2 py-0.5 rounded-full text-[9.5px] font-extrabold uppercase tracking-[0.04em]"
+              style={{
+                background: "var(--color-bg)",
+                color: "var(--color-ink-mid)",
+                boxShadow: "inset 0 2px 4px rgba(45,75,156,0.1)",
+              }}
+            >
+              #{t}
+            </span>
+          ))}
+          {project.tags.length > 3 && (
+            <span className="text-[10px] text-[var(--color-ink-faint)] font-bold self-center">
+              +{project.tags.length - 3}
+            </span>
+          )}
+        </div>
+      )}
       <div className="flex items-center justify-between text-xs text-[var(--color-ink-mid)] font-bold">
         <DueDate task={task} />
       </div>

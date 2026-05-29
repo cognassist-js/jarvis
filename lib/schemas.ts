@@ -29,12 +29,18 @@ export const updateGoalSchema = z.object({
 });
 export type UpdateGoalInput = z.infer<typeof updateGoalSchema>;
 
+const tagsArray = z
+  .array(z.string().trim().min(1).max(40))
+  .max(20)
+  .optional();
+
 export const createProjectSchema = z.object({
   goalId: z.string().min(1).nullable().optional(),
   title: z.string().min(1).max(200),
   description: z.string().max(2000).nullable().optional(),
   status: z.enum(PROJECT_STATUS).optional(),
   dueDate: isoDate,
+  tags: tagsArray,
 });
 export type CreateProjectInput = z.infer<typeof createProjectSchema>;
 
@@ -45,6 +51,7 @@ export const updateProjectSchema = z.object({
   description: z.string().max(2000).nullable().optional(),
   status: z.enum(PROJECT_STATUS).optional(),
   dueDate: isoDate,
+  tags: tagsArray,
 });
 export type UpdateProjectInput = z.infer<typeof updateProjectSchema>;
 

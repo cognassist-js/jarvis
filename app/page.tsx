@@ -6,7 +6,20 @@ import { listGoals } from "@/lib/services/goals";
 
 export const dynamic = "force-dynamic";
 
-export default async function Home() {
+type PageProps = {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+};
+
+function param(v: string | string[] | undefined): string | undefined {
+  if (Array.isArray(v)) return v[0];
+  return v;
+}
+
+export default async function Home(props: PageProps) {
+  const sp = await props.searchParams;
+  const activeGoalId = param(sp.goal) ?? null;
+  const activeTag = param(sp.tag) ?? null;
+
   const [tasks, projects, goals] = await Promise.all([
     listTasks(),
     listProjects(),
@@ -15,7 +28,13 @@ export default async function Home() {
 
   return (
     <AppShell>
-      <BoardPage tasks={tasks} projects={projects} goals={goals} />
+      <BoardPage
+        tasks={tasks}
+        projects={projects}
+        goals={goals}
+        activeGoalId={activeGoalId}
+        activeTag={activeTag}
+      />
     </AppShell>
   );
 }

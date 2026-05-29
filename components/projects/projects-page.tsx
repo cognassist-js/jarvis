@@ -1,10 +1,12 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Plus, Layers, Pencil, Trash2, ListPlus } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Plus, Layers, Pencil, Trash2, ListPlus, X } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input, Textarea } from "@/components/ui/input";
+import { TagInput } from "@/components/ui/tag-input";
 import {
   Dialog,
   DialogContent,
@@ -38,14 +40,37 @@ const STATUS_LABEL: Record<ProjectStatus, string> = {
 export function ProjectsPage({
   projects,
   goals,
+  allTags,
+  activeTag,
+  activeGoalId,
 }: {
   projects: ProjectWithStats[];
   goals: Goal[];
+  allTags: string[];
+  activeTag: string | null;
+  activeGoalId: string | null;
 }) {
   const [creating, setCreating] = useState(false);
   const [dialogProject, setDialogProject] = useState<ProjectWithStats | null>(
     null,
   );
+  const router = useRouter();
+
+  const activeGoal = activeGoalId
+    ? goals.find((g) => g.id === activeGoalId)
+    : null;
+  const hasFilter = !!activeTag || !!activeGoal;
+
+  function setTagFilter(tag: string | null) {
+    const params = new URLSearchParams();
+    if (tag) params.set("tag", tag);
+    if (activeGoalId) params.set("goal", activeGoalId);
+    router.push(params.toString() ? `/projects?${params}` : "/projects");
+  }
+
+  function clearAll() {
+    router.push("/projects");
+  }
 
   return (
     <>
@@ -56,6 +81,7 @@ export function ProjectsPage({
           </h2>
           <p className="text-sm text-[var(--color-ink-mid)] font-semibold mt-2">
             {projects.length} project{projects.length === 1 ? "" : "s"}
+            {hasFilter && " matching filter"}
           </p>
         </div>
         <Button onClick={() => setCreating(true)}>
@@ -64,8 +90,44 @@ export function ProjectsPage({
         </Button>
       </header>
 
+      {hasFilter && (
+        <div className="flex items-center gap-2 flex-wrap mb-5">
+          <span className="text-[11px] font-extrabold uppercase tracking-[0.1em] text-[var(--color-ink-dim)]">
+            Filtered by
+          </span>
+          {activeGoal && (
+            <FilterPill
+              label={activeGoal.title}
+              tone="goal"
+              onClear={() => {
+                const params = new URLSearchParams();
+                if (activeTag) params.set("tag", activeTag);
+                router.push(params.toString() ? `/projects?${params}` : "/projects");
+              }}
+            />
+          )}
+          {activeTag && (
+            <FilterPill
+              label={`#${activeTag}`}
+              tone="tag"
+              onClear={() => setTagFilter(null)}
+            />
+          )}
+          <button
+            onClick={clearAll}
+            className="text-[12px] text-[var(--color-ink-mid)] hover:text-[var(--color-ink)] font-bold underline-offset-4 hover:underline ml-1"
+          >
+            Clear all
+          </button>
+        </div>
+      )}
+
       {projects.length === 0 ? (
-        <EmptyState onCreate={() => setCreating(true)} />
+        hasFilter ? (
+          <NoMatches onClear={clearAll} />
+        ) : (
+          <EmptyState onCreate={() => setCreating(true)} />
+        )
       ) : (
         <div className="flex flex-col gap-3">
           {projects.map((p) => (
@@ -73,7 +135,11 @@ export function ProjectsPage({
               key={p.id}
               project={p}
               goals={goals}
+              activeTag={activeTag}
               onEdit={() => setDialogProject(p)}
+              onTagClick={(t) =>
+                setTagFilter(t.toLowerCase() === activeTag?.toLowerCase() ? null : t)
+              }
             />
           ))}
         </div>
@@ -83,25 +149,74 @@ export function ProjectsPage({
         open={creating}
         onOpenChange={setCreating}
         goals={goals}
+        allTags={allTags}
       />
       <ProjectDialog
         open={dialogProject !== null}
         onOpenChange={(o) => !o && setDialogProject(null)}
         goals={goals}
+        allTags={allTags}
         project={dialogProject ?? undefined}
       />
     </>
   );
 }
 
+function FilterPill({
+  label,
+  tone,
+  onClear,
+}: {
+  label: string;
+  tone: "tag" | "goal";
+  onClear: () => void;
+}) {
+  const styles =
+    tone === "tag"
+      ? {
+          background:
+            "linear-gradient(160deg, var(--color-clay-mint), var(--color-clay-aqua))",
+          color: "#0e4a3e",
+          boxShadow:
+            "0 6px 12px -3px rgba(85,200,180,0.5), inset 0 2px 0 rgba(255,255,255,0.4)",
+        }
+      : {
+          background:
+            "linear-gradient(160deg, var(--color-clay-sky), var(--color-clay-deep))",
+          color: "white",
+          boxShadow:
+            "0 6px 12px -3px rgba(85,145,235,0.5), inset 0 2px 0 rgba(255,255,255,0.35)",
+        };
+  return (
+    <span
+      className="inline-flex items-center gap-1.5 pl-3 pr-1 py-1 rounded-full text-[11px] font-extrabold uppercase tracking-[0.04em]"
+      style={styles}
+    >
+      {label}
+      <button
+        type="button"
+        onClick={onClear}
+        aria-label="Clear filter"
+        className="w-4 h-4 rounded-full grid place-items-center bg-white/30 hover:bg-white/60 transition-colors"
+      >
+        <X size={10} strokeWidth={3} />
+      </button>
+    </span>
+  );
+}
+
 function ProjectRow({
   project,
   goals,
+  activeTag,
   onEdit,
+  onTagClick,
 }: {
   project: ProjectWithStats;
   goals: Goal[];
+  activeTag: string | null;
   onEdit: () => void;
+  onTagClick: (tag: string) => void;
 }) {
   const goal = project.goalId
     ? goals.find((g) => g.id === project.goalId)
@@ -109,14 +224,21 @@ function ProjectRow({
   const variant = goal ? pickVariant(goal.color) : null;
   const status = project.status;
   return (
-    <button
-      type="button"
+    <div
+      role="button"
+      tabIndex={0}
       onClick={onEdit}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onEdit();
+        }
+      }}
       aria-label={`Edit project ${project.title}`}
-      className="group clay-card p-5 flex items-center gap-5 text-left w-full hover:-translate-y-[2px] transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[var(--color-clay-deep)]"
+      className="group clay-card p-5 flex items-center gap-5 text-left w-full hover:-translate-y-[2px] transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[var(--color-clay-deep)] cursor-pointer"
     >
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-3 mb-1.5">
+        <div className="flex items-center gap-2 mb-1.5 flex-wrap">
           {goal && variant && (
             <span
               className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-[11px] font-extrabold uppercase tracking-[0.04em]"
@@ -130,6 +252,34 @@ function ProjectRow({
             </span>
           )}
           <StatusPill status={status} />
+          {project.tags?.map((t) => (
+            <button
+              key={t}
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onTagClick(t);
+              }}
+              className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10.5px] font-extrabold uppercase tracking-[0.06em] transition-transform hover:-translate-y-px"
+              style={
+                activeTag && t.toLowerCase() === activeTag.toLowerCase()
+                  ? {
+                      background:
+                        "linear-gradient(160deg, var(--color-clay-mint), var(--color-clay-aqua))",
+                      color: "#0e4a3e",
+                      boxShadow:
+                        "0 5px 10px -2px rgba(85,200,180,0.5), inset 0 2px 0 rgba(255,255,255,0.4)",
+                    }
+                  : {
+                      background: "var(--color-bg)",
+                      color: "var(--color-ink-mid)",
+                      boxShadow: "inset 0 2px 4px rgba(45,75,156,0.1)",
+                    }
+              }
+            >
+              #{t}
+            </button>
+          ))}
         </div>
         <h3 className="font-display text-[22px] font-bold leading-tight tracking-[-0.015em] truncate">
           {project.title}
@@ -211,7 +361,7 @@ function ProjectRow({
           <Pencil size={14} strokeWidth={2.6} />
         </span>
       </div>
-    </button>
+    </div>
   );
 }
 
@@ -241,6 +391,22 @@ function StatusPill({ status }: { status: ProjectStatus }) {
     >
       {STATUS_LABEL[status]}
     </span>
+  );
+}
+
+function NoMatches({ onClear }: { onClear: () => void }) {
+  return (
+    <div className="clay-card p-12 grid place-items-center text-center">
+      <h3 className="font-display text-xl font-black mb-2">
+        No projects match
+      </h3>
+      <p className="text-[var(--color-ink-mid)] text-sm font-semibold mb-5 max-w-xs">
+        Try clearing the filter, or create a new project that fits.
+      </p>
+      <Button variant="secondary" onClick={onClear}>
+        Clear filter
+      </Button>
+    </div>
   );
 }
 
@@ -274,11 +440,13 @@ function ProjectDialog({
   open,
   onOpenChange,
   goals,
+  allTags,
   project,
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
   goals: Goal[];
+  allTags: string[];
   project?: ProjectWithStats;
 }) {
   const editing = !!project;
@@ -287,6 +455,7 @@ function ProjectDialog({
   const [goalId, setGoalId] = useState<string>("");
   const [status, setStatus] = useState<ProjectStatus>("active");
   const [dueDate, setDueDate] = useState("");
+  const [tags, setTags] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -297,12 +466,14 @@ function ProjectDialog({
       setGoalId(project.goalId ?? "");
       setStatus(project.status);
       setDueDate(project.dueDate ? project.dueDate.slice(0, 10) : "");
+      setTags(project.tags ?? []);
     } else {
       setTitle("");
       setDescription("");
       setGoalId(goals[0]?.id ?? "");
       setStatus("active");
       setDueDate("");
+      setTags([]);
     }
   }, [open, project, goals]);
 
@@ -319,6 +490,7 @@ function ProjectDialog({
         goalId: goalId || null,
         status,
         dueDate: dueDate ? new Date(dueDate).toISOString() : null,
+        tags,
       };
       if (editing && project) {
         await updateProjectAction({ id: project.id, ...payload });
@@ -377,6 +549,20 @@ function ProjectDialog({
             value={description}
             onChange={(e) => setDescription(e.target.value)}
           />
+          <label className="flex flex-col gap-1.5">
+            <span className="text-[11px] font-extrabold uppercase tracking-[0.1em] text-[var(--color-ink-dim)]">
+              Tags
+              <span className="ml-1.5 normal-case tracking-normal font-semibold text-[var(--color-ink-faint)]">
+                — what type of project (e.g. Content, Event, Admin)
+              </span>
+            </span>
+            <TagInput
+              value={tags}
+              onChange={setTags}
+              suggestions={allTags}
+              placeholder="Type a tag and press Enter…"
+            />
+          </label>
           <div className="grid grid-cols-2 gap-3">
             <label className="flex flex-col gap-1.5">
               <span className="text-[11px] font-extrabold uppercase tracking-[0.1em] text-[var(--color-ink-dim)]">

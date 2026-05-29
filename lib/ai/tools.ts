@@ -56,29 +56,32 @@ export const jarvisTools = {
   }),
 
   listProjects: tool({
-    description: "List projects, optionally filtered by goalId and/or status.",
+    description:
+      "List projects, optionally filtered by goalId, status, or a tag (case-insensitive exact match, e.g. 'Content', 'Event', 'Admin').",
     inputSchema: z.object({
       goalId: z.string().optional(),
       status: z.enum(PROJECT_STATUS).optional(),
+      tag: z.string().optional(),
     }),
     execute: async (input) => projectsService.listProjects(input),
   }),
 
   createProject: tool({
     description:
-      "Create a new project, optionally attached to a goal. Use when the user describes a concrete body of work.",
+      "Create a new project, optionally attached to a goal. Use when the user describes a concrete body of work. Tags are short type labels (e.g. ['Content', 'Event']).",
     inputSchema: z.object({
       goalId: z.string().nullable().optional(),
       title: z.string().min(1).max(200),
       description: z.string().max(2000).nullable().optional(),
       dueDate: isoDate.nullable().optional(),
+      tags: z.array(z.string().min(1).max(40)).max(20).optional(),
     }),
     execute: async (input) => projectsService.createProject(input),
   }),
 
   updateProject: tool({
     description:
-      "Update a project (title, description, status, dueDate, goalId).",
+      "Update a project (title, description, status, dueDate, goalId, tags). Passing tags REPLACES the existing set, so include all tags you want to keep.",
     inputSchema: z.object({
       id: z.string(),
       goalId: z.string().nullable().optional(),
@@ -86,8 +89,16 @@ export const jarvisTools = {
       description: z.string().max(2000).nullable().optional(),
       status: z.enum(PROJECT_STATUS).optional(),
       dueDate: isoDate.nullable().optional(),
+      tags: z.array(z.string().min(1).max(40)).max(20).optional(),
     }),
     execute: async (input) => projectsService.updateProject(input),
+  }),
+
+  listProjectTags: tool({
+    description:
+      "List every tag currently in use across all projects. Useful before creating a new tag to avoid duplicates.",
+    inputSchema: z.object({}),
+    execute: async () => projectsService.listAllTags(),
   }),
 
   listTasks: tool({

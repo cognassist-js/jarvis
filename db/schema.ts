@@ -47,6 +47,10 @@ export const projects = sqliteTable("projects", {
     .notNull()
     .default("not_started"),
   dueDate: text("due_date"),
+  tags: text("tags", { mode: "json" })
+    .$type<string[]>()
+    .notNull()
+    .default([]),
   sortOrder: integer("sort_order").notNull().default(0),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),

@@ -1,14 +1,15 @@
 "use client";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   LayoutGrid,
   Target,
   Layers,
   MessageCircle,
-  Settings,
   Moon,
   Sun,
+  X,
+  Tag as TagIcon,
 } from "lucide-react";
 import { useTheme } from "./theme-provider";
 import type { GoalWithStats } from "@/lib/services/goals";
@@ -24,22 +25,51 @@ const initials = (n: string) =>
     .join("")
     .toUpperCase();
 
-const goalSwatch = (color: string): string => {
-  // Map hex to gradient slot. We let inline style handle colour exactly.
-  return color;
-};
+// Pages where filters are meaningful. From anywhere else, applying a filter
+// jumps the user to the board (where tasks live).
+const FILTERABLE = new Set<string>(["/", "/projects"]);
 
 export function Sidebar({
   goals,
   projects,
   summary,
+  allTags = [],
 }: {
   goals: GoalWithStats[];
   projects: Project[];
   summary: { counts: Record<string, number>; total: number };
+  allTags?: string[];
 }) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const router = useRouter();
   const { theme, toggle } = useTheme();
+
+  const activeGoalId = searchParams.get("goal");
+  const activeTag = searchParams.get("tag");
+
+  function applyFilter(next: { goal?: string | null; tag?: string | null }) {
+    const params = new URLSearchParams(searchParams.toString());
+    if (next.goal !== undefined) {
+      if (next.goal) params.set("goal", next.goal);
+      else params.delete("goal");
+    }
+    if (next.tag !== undefined) {
+      if (next.tag) params.set("tag", next.tag);
+      else params.delete("tag");
+    }
+    const target = FILTERABLE.has(pathname) ? pathname : "/";
+    const qs = params.toString();
+    router.push(qs ? `${target}?${qs}` : target);
+  }
+
+  function toggleGoal(id: string) {
+    applyFilter({ goal: activeGoalId === id ? null : id });
+  }
+
+  function toggleTag(t: string) {
+    applyFilter({ tag: activeTag?.toLowerCase() === t.toLowerCase() ? null : t });
+  }
 
   const navItems = [
     {
@@ -59,7 +89,7 @@ export function Sidebar({
   ] as const;
 
   return (
-    <aside className="clay-surface flex flex-col p-7 pt-7">
+    <aside className="clay-surface flex flex-col p-7 pt-7 max-h-screen overflow-y-auto">
       <div className="flex items-center gap-3.5 px-2 pb-6">
         <div
           className="w-14 h-14 rounded-[22px] grid place-items-center text-white font-display font-black text-[28px] -rotate-[4deg]"
@@ -141,8 +171,16 @@ export function Sidebar({
         })}
       </nav>
 
-      <div className="text-[11px] font-extrabold uppercase tracking-[0.12em] text-[var(--color-ink-dim)] mx-3 mt-5 mb-2.5">
-        Goals
+      <div className="text-[11px] font-extrabold uppercase tracking-[0.12em] text-[var(--color-ink-dim)] mx-3 mt-5 mb-2.5 flex items-center justify-between">
+        <span>Filter by goal</span>
+        {activeGoalId && (
+          <button
+            onClick={() => applyFilter({ goal: null })}
+            className="normal-case tracking-normal font-bold text-[10px] text-[var(--color-clay-deep)] hover:underline"
+          >
+            clear
+          </button>
+        )}
       </div>
 
       <div className="flex flex-col gap-3">
@@ -155,9 +193,63 @@ export function Sidebar({
           </Link>
         )}
         {goals.map((g) => (
-          <GoalClay key={g.id} goal={g} />
+          <GoalClay
+            key={g.id}
+            goal={g}
+            selected={activeGoalId === g.id}
+            onToggle={() => toggleGoal(g.id)}
+          />
         ))}
       </div>
+
+      {allTags.length > 0 && (
+        <>
+          <div className="text-[11px] font-extrabold uppercase tracking-[0.12em] text-[var(--color-ink-dim)] mx-3 mt-5 mb-2.5 flex items-center justify-between">
+            <span className="inline-flex items-center gap-1.5">
+              <TagIcon size={11} strokeWidth={3} /> Filter by tag
+            </span>
+            {activeTag && (
+              <button
+                onClick={() => applyFilter({ tag: null })}
+                className="normal-case tracking-normal font-bold text-[10px] text-[var(--color-clay-deep)] hover:underline"
+              >
+                clear
+              </button>
+            )}
+          </div>
+          <div className="flex flex-wrap gap-1.5 mx-1">
+            {allTags.map((t) => {
+              const selected =
+                activeTag?.toLowerCase() === t.toLowerCase();
+              return (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => toggleTag(t)}
+                  className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-extrabold uppercase tracking-[0.04em] transition-transform hover:-translate-y-px"
+                  style={
+                    selected
+                      ? {
+                          background:
+                            "linear-gradient(160deg, var(--color-clay-mint), var(--color-clay-aqua))",
+                          color: "#0e4a3e",
+                          boxShadow:
+                            "0 5px 10px -2px rgba(85,200,180,0.5), inset 0 2px 0 rgba(255,255,255,0.4)",
+                        }
+                      : {
+                          background: "var(--color-bg)",
+                          color: "var(--color-ink-mid)",
+                          boxShadow: "inset 0 2px 4px rgba(45,75,156,0.1)",
+                        }
+                  }
+                >
+                  #{t}
+                </button>
+              );
+            })}
+          </div>
+        </>
+      )}
 
       <div className="mt-auto pt-6">
         <div
@@ -203,21 +295,57 @@ export function Sidebar({
   );
 }
 
-function GoalClay({ goal }: { goal: GoalWithStats }) {
-  // Pick gradient by color hex bucket
+function GoalClay({
+  goal,
+  selected,
+  onToggle,
+}: {
+  goal: GoalWithStats;
+  selected: boolean;
+  onToggle: () => void;
+}) {
   const variant = pickVariant(goal.color);
   return (
-    <Link
-      href={`/goals#${goal.id}`}
-      className="goal-clay block relative overflow-hidden p-4 rounded-[24px] transition-all hover:-translate-y-[3px] hover:-rotate-[1deg]"
-      style={variant.surface}
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-pressed={selected}
+      aria-label={
+        selected
+          ? `Clear filter: ${goal.title}`
+          : `Filter board by goal: ${goal.title}`
+      }
+      className={cn(
+        "goal-clay relative overflow-hidden p-4 rounded-[24px] text-left w-full transition-all",
+        "hover:-translate-y-[3px] hover:-rotate-[1deg]",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[var(--color-clay-deep)]",
+      )}
+      style={{
+        ...variant.surface,
+        ...(selected
+          ? {
+              outline: "3px solid var(--color-clay-deep)",
+              outlineOffset: 2,
+            }
+          : {}),
+      }}
     >
       <div className="flex justify-between items-center mb-2.5">
         <div
-          className="font-display text-[18px] font-bold tracking-[-0.02em] leading-none truncate pr-2"
+          className="font-display text-[18px] font-bold tracking-[-0.02em] leading-none truncate pr-2 flex items-center gap-2"
           style={{ color: variant.text }}
         >
           {goal.title}
+          {selected && (
+            <span
+              className="inline-flex items-center justify-center w-5 h-5 rounded-full text-[var(--color-ink)] bg-white/80"
+              aria-hidden
+              style={{ boxShadow: "inset 0 2px 4px rgba(0,0,0,0.1)" }}
+              title="Click to clear filter"
+            >
+              <X size={11} strokeWidth={3} />
+            </span>
+          )}
         </div>
         <span
           className="font-sans text-[22px] font-extrabold text-[var(--color-ink)] tabular-nums px-2.5 py-1 rounded-[12px]"
@@ -254,7 +382,7 @@ function GoalClay({ goal }: { goal: GoalWithStats }) {
           filter: "blur(8px)",
         }}
       />
-    </Link>
+    </button>
   );
 }
 
@@ -264,12 +392,7 @@ type ClayVariant = {
 };
 
 export function pickVariant(color: string): ClayVariant {
-  // Categorise hex by hue family
   const c = color.toLowerCase();
-  // sky/ocean blues
-  if (/#(?:[0-9a-f]?[6-9a-f][0-9a-f]?[6-9a-f]f[0-9a-f])/.test(c)) {
-    // fallthrough — handled below
-  }
   const blueHex = ["#6ba6f5", "#9ec6fa", "#4783db"];
   const mintHex = ["#6dd5c7", "#a8e6d4"];
   const lilacHex = ["#a995ec", "#c8b5f5"];
@@ -319,7 +442,6 @@ export function pickVariant(color: string): ClayVariant {
       text: "white",
     };
   }
-  // fallback — colour as a solid soft tint
   return {
     surface: {
       background: `linear-gradient(160deg, ${color}, ${color})`,
