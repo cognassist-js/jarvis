@@ -98,14 +98,32 @@ export async function reorderColumn(
   status: TaskStatus,
   orderedIds: string[],
 ): Promise<void> {
+  if (orderedIds.length === 0) return;
   const ts = now();
   db.transaction((tx) => {
-    orderedIds.forEach((id, idx) => {
-      tx.update(tasks)
-        .set({ status, sortOrder: idx, updatedAt: ts })
+    for (let idx = 0; idx < orderedIds.length; idx++) {
+      const id = orderedIds[idx];
+      const existing = tx
+        .select({ status: tasks.status, completedAt: tasks.completedAt })
+        .from(tasks)
         .where(eq(tasks.id, id))
-        .run();
-    });
+        .get();
+      if (!existing) continue;
+
+      const patch: Partial<Task> = {
+        status,
+        sortOrder: idx,
+        updatedAt: ts,
+      };
+      // Maintain completedAt the same way updateTask() does so the calendar
+      // (and any other consumer of completedAt) stays accurate.
+      if (status === "done" && existing.status !== "done") {
+        patch.completedAt = ts;
+      } else if (status !== "done" && existing.status === "done") {
+        patch.completedAt = null;
+      }
+      tx.update(tasks).set(patch).where(eq(tasks.id, id)).run();
+    }
   });
 }
 

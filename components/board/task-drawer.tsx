@@ -75,7 +75,7 @@ export function TaskDrawer({
 
   if (!task) return null;
 
-  async function save() {
+  async function save(opts?: { thenPromptTime?: boolean }) {
     if (!task) return;
     setSaving(true);
     const wasDone = task.status === "done";
@@ -92,8 +92,10 @@ export function TaskDrawer({
       });
       toast.success("Saved");
       onClose();
-      // Prompt for time spent when transitioning into Done.
-      if (nowDone && !wasDone) {
+      // Prompt for time when transitioning into Done, or when the caller
+      // explicitly asked to open the time dialog (e.g. "Log time" button).
+      const autoPrompt = nowDone && !wasDone;
+      if (autoPrompt || opts?.thenPromptTime) {
         window.dispatchEvent(
           new CustomEvent("jarvis:task-completed", {
             detail: {
@@ -249,23 +251,13 @@ export function TaskDrawer({
               </span>
               <button
                 type="button"
+                disabled={saving}
                 onClick={() => {
-                  if (!task) return;
-                  // Close drawer first to avoid stacked overlays.
-                  onClose();
-                  setTimeout(() => {
-                    window.dispatchEvent(
-                      new CustomEvent("jarvis:task-completed", {
-                        detail: {
-                          taskId: task.id,
-                          taskTitle: task.title,
-                          initialMinutes: task.timeSpentMinutes ?? null,
-                        },
-                      }),
-                    );
-                  }, 80);
+                  // Save pending drawer edits first, then open the time
+                  // dialog. Avoids clobbering an unsaved status change.
+                  save({ thenPromptTime: true });
                 }}
-                className="ml-auto inline-flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-[0.08em] text-[var(--color-clay-deep)] hover:underline"
+                className="ml-auto inline-flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-[0.08em] text-[var(--color-clay-deep)] hover:underline disabled:opacity-50"
               >
                 <Pencil size={11} strokeWidth={2.6} />
                 {task.timeSpentMinutes ? "Edit" : "Log time"}
@@ -286,7 +278,7 @@ export function TaskDrawer({
             <Button variant="secondary" onClick={onClose}>
               Cancel
             </Button>
-            <Button variant="primary" onClick={save} disabled={saving}>
+            <Button variant="primary" onClick={() => save()} disabled={saving}>
               {saving ? "Saving…" : "Save"}
             </Button>
           </div>
