@@ -45,6 +45,7 @@ export async function createTask(input: CreateTaskInput): Promise<Task> {
     dueDate: input.dueDate ?? null,
     sortOrder: (maxSort?.m ?? -1) + 1,
     completedAt: status === "done" ? ts : null,
+    timeSpentMinutes: null,
     createdAt: ts,
     updatedAt: ts,
   };
@@ -65,6 +66,8 @@ export async function updateTask(
     patch.description = rest.description ?? null;
   if (rest.priority !== undefined) patch.priority = rest.priority;
   if (rest.dueDate !== undefined) patch.dueDate = rest.dueDate ?? null;
+  if (rest.timeSpentMinutes !== undefined)
+    patch.timeSpentMinutes = rest.timeSpentMinutes ?? null;
   if (rest.status !== undefined) {
     patch.status = rest.status;
     if (rest.status === "done" && existing.status !== "done") {

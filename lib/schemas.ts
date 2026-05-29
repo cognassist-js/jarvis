@@ -73,6 +73,15 @@ export const updateTaskSchema = z.object({
   status: z.enum(TASK_STATUS).optional(),
   priority: z.enum(TASK_PRIORITY).optional(),
   dueDate: isoDate,
+  // Total minutes spent on the task. Null clears any prior value.
+  // Capped at 1 year of minutes as a sanity check.
+  timeSpentMinutes: z
+    .number()
+    .int()
+    .min(0)
+    .max(525_600)
+    .nullable()
+    .optional(),
 });
 export type UpdateTaskInput = z.infer<typeof updateTaskSchema>;
 

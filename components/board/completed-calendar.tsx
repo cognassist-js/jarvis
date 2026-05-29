@@ -1,9 +1,10 @@
 "use client";
 import { useEffect, useMemo, useRef } from "react";
 import { format, isToday, isYesterday, parseISO, startOfDay } from "date-fns";
-import { X, ChevronLeft, ChevronRight, Inbox } from "lucide-react";
+import { X, ChevronLeft, ChevronRight, Inbox, Clock } from "lucide-react";
 import type { Goal, Project, Task } from "@/db/schema";
 import { pickVariant } from "@/components/sidebar";
+import { formatMinutes } from "./time-spent-dialog";
 
 const DAY_WIDTH = 220; // px — single source of truth for column + scroll math
 const DAY_GAP = 14;
@@ -302,11 +303,27 @@ function CompletedTaskCard({
       <h4 className="font-display text-[14px] font-bold leading-[1.25] tracking-[-0.015em] text-[var(--color-ink)] line-through decoration-1 decoration-[var(--color-ink-dim)]">
         {task.title}
       </h4>
-      {task.completedAt && (
-        <div className="text-[10px] text-[var(--color-ink-dim)] font-semibold mt-1 tabular-nums">
-          ✓ {format(parseISO(task.completedAt), "h:mm a")}
-        </div>
-      )}
+      <div className="flex items-center justify-between gap-2 mt-1">
+        {task.completedAt && (
+          <span className="text-[10px] text-[var(--color-ink-dim)] font-semibold tabular-nums">
+            ✓ {format(parseISO(task.completedAt), "h:mm a")}
+          </span>
+        )}
+        {task.timeSpentMinutes ? (
+          <span
+            className="inline-flex items-center gap-1 text-[10px] font-extrabold tabular-nums px-2 py-0.5 rounded-full"
+            style={{
+              background: "var(--color-bg)",
+              color: "var(--color-ink)",
+              boxShadow: "inset 0 2px 4px rgba(45,75,156,0.1)",
+            }}
+            title="Time spent"
+          >
+            <Clock size={9} strokeWidth={3} />
+            {formatMinutes(task.timeSpentMinutes)}
+          </span>
+        ) : null}
+      </div>
     </button>
   );
 }

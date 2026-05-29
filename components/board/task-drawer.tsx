@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { format } from "date-fns";
-import { Trash2, X } from "lucide-react";
+import { Trash2, X, Clock, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import type { Goal, Project, Task, TaskPriority, TaskStatus } from "@/db/schema";
 import { TASK_PRIORITY, TASK_STATUS } from "@/db/schema";
@@ -18,6 +18,7 @@ import {
   updateTaskAction,
   deleteTaskAction,
 } from "@/app/actions/tasks";
+import { formatMinutes } from "./time-spent-dialog";
 
 const STATUS_LABEL: Record<TaskStatus, string> = {
   backlog: "Backlog",
@@ -77,6 +78,8 @@ export function TaskDrawer({
   async function save() {
     if (!task) return;
     setSaving(true);
+    const wasDone = task.status === "done";
+    const nowDone = status === "done";
     try {
       await updateTaskAction({
         id: task.id,
@@ -89,6 +92,18 @@ export function TaskDrawer({
       });
       toast.success("Saved");
       onClose();
+      // Prompt for time spent when transitioning into Done.
+      if (nowDone && !wasDone) {
+        window.dispatchEvent(
+          new CustomEvent("jarvis:task-completed", {
+            detail: {
+              taskId: task.id,
+              taskTitle: title,
+              initialMinutes: task.timeSpentMinutes ?? null,
+            },
+          }),
+        );
+      }
     } catch (err) {
       console.error(err);
       toast.error("Could not save");
@@ -216,6 +231,47 @@ export function TaskDrawer({
               </Select>
             </Field>
           </div>
+          <Field label="Time spent">
+            <div
+              className="flex items-center gap-2 px-3.5 py-2.5 rounded-[14px] clay-inset"
+            >
+              <Clock size={15} className="text-[var(--color-ink-mid)]" />
+              <span
+                className={
+                  task.timeSpentMinutes
+                    ? "text-[var(--color-ink)] font-semibold text-sm"
+                    : "text-[var(--color-ink-faint)] italic text-sm"
+                }
+              >
+                {task.timeSpentMinutes
+                  ? formatMinutes(task.timeSpentMinutes)
+                  : "Not logged"}
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!task) return;
+                  // Close drawer first to avoid stacked overlays.
+                  onClose();
+                  setTimeout(() => {
+                    window.dispatchEvent(
+                      new CustomEvent("jarvis:task-completed", {
+                        detail: {
+                          taskId: task.id,
+                          taskTitle: task.title,
+                          initialMinutes: task.timeSpentMinutes ?? null,
+                        },
+                      }),
+                    );
+                  }, 80);
+                }}
+                className="ml-auto inline-flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-[0.08em] text-[var(--color-clay-deep)] hover:underline"
+              >
+                <Pencil size={11} strokeWidth={2.6} />
+                {task.timeSpentMinutes ? "Edit" : "Log time"}
+              </button>
+            </div>
+          </Field>
         </div>
 
         <div className="mt-5 flex items-center justify-between">

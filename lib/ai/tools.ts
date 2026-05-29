@@ -129,7 +129,7 @@ export const jarvisTools = {
 
   updateTask: tool({
     description:
-      "Update a task. Changing status moves the card on the kanban board (e.g. 'in_progress' → 'done' marks it complete).",
+      "Update a task. Changing status moves the card on the kanban board (e.g. 'in_progress' → 'done' marks it complete). When marking a task done, you may also pass timeSpentMinutes if the user has told you how long it took (total minutes — e.g. 1h 25m = 85).",
     inputSchema: z.object({
       id: z.string(),
       projectId: z.string().optional(),
@@ -137,6 +137,14 @@ export const jarvisTools = {
       description: z.string().max(4000).nullable().optional(),
       status: z.enum(TASK_STATUS).optional(),
       priority: z.enum(TASK_PRIORITY).optional(),
+      timeSpentMinutes: z
+        .number()
+        .int()
+        .min(0)
+        .max(525_600)
+        .nullable()
+        .optional()
+        .describe("Total minutes spent on the task. Pass null to clear."),
       dueDate: isoDate.nullable().optional(),
     }),
     execute: async (input) => tasksService.updateTask(input),

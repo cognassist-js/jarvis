@@ -1,0 +1,1 @@
+ALTER TABLE `tasks` ADD `time_spent_minutes` integer;

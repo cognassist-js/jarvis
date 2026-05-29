@@ -70,6 +70,7 @@ export const tasks = sqliteTable("tasks", {
   dueDate: text("due_date"),
   sortOrder: integer("sort_order").notNull().default(0),
   completedAt: text("completed_at"),
+  timeSpentMinutes: integer("time_spent_minutes"),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
 });

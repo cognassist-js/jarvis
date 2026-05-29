@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import {
   DndContext,
   DragOverlay,
@@ -51,6 +51,8 @@ export function BoardPage({
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [, startTransition] = useTransition();
   const router = useRouter();
+  // Captured at drag-start so we can detect a "transition into Done" on drop.
+  const dragSourceStatusRef = useRef<TaskStatus | null>(null);
 
   const activeGoal = activeGoalId
     ? goals.find((g) => g.id === activeGoalId) ?? null
@@ -149,7 +151,9 @@ export function BoardPage({
   }
 
   function onDragStart(e: DragStartEvent) {
-    setActiveId(String(e.active.id));
+    const id = String(e.active.id);
+    setActiveId(id);
+    dragSourceStatusRef.current = tasks.find((t) => t.id === id)?.status ?? null;
   }
 
   function onDragOver(e: DragOverEvent) {
@@ -220,6 +224,23 @@ export function BoardPage({
         console.error(err);
       }
     });
+
+    // If this drop is a transition INTO Done from another column, prompt for
+    // the time spent. Skipping has no consequence — the move still completes.
+    const cameFromDone = dragSourceStatusRef.current === "done";
+    dragSourceStatusRef.current = null;
+    if (overCol === "done" && !cameFromDone) {
+      const movedTask = tasks.find((t) => t.id === activeId);
+      window.dispatchEvent(
+        new CustomEvent("jarvis:task-completed", {
+          detail: {
+            taskId: activeId,
+            taskTitle: movedTask?.title,
+            initialMinutes: movedTask?.timeSpentMinutes ?? null,
+          },
+        }),
+      );
+    }
   }
 
   const high = visibleTasks.filter((t) => t.priority === "high" && t.status !== "done").length;
