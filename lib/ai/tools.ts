@@ -121,7 +121,12 @@ export const jarvisTools = {
       title: z.string().min(1).max(300),
       description: z.string().max(4000).nullable().optional(),
       status: z.enum(TASK_STATUS).optional(),
-      priority: z.enum(TASK_PRIORITY).optional(),
+      priority: z
+        .enum(TASK_PRIORITY)
+        .optional()
+        .describe(
+          "Task priority. Use 'critical' only when the due date is a hard, business-critical deadline (not a soft suggestion); otherwise prefer low/medium/high.",
+        ),
       dueDate: isoDate.nullable().optional(),
     }),
     execute: async (input) => tasksService.createTask(input),
@@ -136,7 +141,12 @@ export const jarvisTools = {
       title: z.string().min(1).max(300).optional(),
       description: z.string().max(4000).nullable().optional(),
       status: z.enum(TASK_STATUS).optional(),
-      priority: z.enum(TASK_PRIORITY).optional(),
+      priority: z
+        .enum(TASK_PRIORITY)
+        .optional()
+        .describe(
+          "Task priority. Use 'critical' only when the due date is a hard, business-critical deadline (not a soft suggestion); otherwise prefer low/medium/high.",
+        ),
       timeSpentMinutes: z
         .number()
         .int()

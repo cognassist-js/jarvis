@@ -21,7 +21,9 @@ export const TASK_STATUS = [
 ] as const;
 export type TaskStatus = (typeof TASK_STATUS)[number];
 
-export const TASK_PRIORITY = ["low", "medium", "high"] as const;
+// "critical" sits above "high": for these tasks the due date is treated as a
+// hard, business-critical deadline rather than a soft suggestion.
+export const TASK_PRIORITY = ["low", "medium", "high", "critical"] as const;
 export type TaskPriority = (typeof TASK_PRIORITY)[number];
 
 export const CHAT_ROLE = ["user", "assistant", "tool"] as const;

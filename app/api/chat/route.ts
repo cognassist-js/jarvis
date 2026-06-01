@@ -1,5 +1,5 @@
 import { streamText, convertToModelMessages, stepCountIs } from "ai";
-import { gateway } from "@ai-sdk/gateway";
+import { openai } from "@ai-sdk/openai";
 import type { UIMessage } from "ai";
 import { db } from "@/db";
 import { chatMessages } from "@/db/schema";
@@ -10,8 +10,9 @@ export const runtime = "nodejs";
 export const maxDuration = 60;
 
 const USER_NAME = process.env.USER_NAME ?? "James";
-const MODEL_ID =
-  process.env.JARVIS_MODEL ?? "anthropic/claude-sonnet-4.6";
+// Override via JARVIS_MODEL. Good options: gpt-5-mini (cheap + capable),
+// gpt-5 (best for harder reasoning), gpt-4o (older, still solid).
+const MODEL_ID = process.env.JARVIS_MODEL ?? "gpt-5-mini";
 
 const SYSTEM_PROMPT = `You are Jarvis — ${USER_NAME}'s personal planning partner running locally on their machine.
 
@@ -54,7 +55,7 @@ export async function POST(req: Request) {
   }
 
   const result = streamText({
-    model: gateway(MODEL_ID),
+    model: openai(MODEL_ID),
     system: SYSTEM_PROMPT,
     messages: await convertToModelMessages(body.messages),
     tools: jarvisTools,

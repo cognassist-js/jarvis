@@ -203,7 +203,11 @@ function GoalCard({
               }}
             >
               <span className="truncate pr-2">{p.title}</span>
-              <span className="opacity-80 tabular-nums">{p.progress}%</span>
+              <span className="opacity-80 tabular-nums">
+                {p.dueDate
+                  ? `${p.progress}%`
+                  : `${p.doneTasks}/${p.totalTasks}`}
+              </span>
             </li>
           ))}
         </ul>

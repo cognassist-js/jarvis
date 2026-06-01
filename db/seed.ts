@@ -208,7 +208,7 @@ async function main() {
       title: "Vercel AI Gateway key",
       description: "Waiting on admin to provision.",
       status: "blocked",
-      priority: "high",
+      priority: "critical",
       dueDate: inDays(-2),
       sortOrder: 0,
       createdAt: now(),

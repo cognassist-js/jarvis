@@ -14,15 +14,21 @@ import {
 } from "@dnd-kit/core";
 import { SortableContext, arrayMove } from "@dnd-kit/sortable";
 import { useRouter } from "next/navigation";
-import { Search, Plus, X, CalendarRange } from "lucide-react";
+import { Search, Plus, X, CalendarRange, LayoutGrid, CalendarClock } from "lucide-react";
 import { toast } from "sonner";
 import type { Goal, Project, Task, TaskStatus } from "@/db/schema";
 import { TASK_STATUS } from "@/db/schema";
 import { TaskCard } from "./task-card";
 import { TaskDrawer } from "./task-drawer";
 import { CompletedCalendar } from "./completed-calendar";
+import { CriticalTasksAlert } from "./critical-tasks-alert";
+import { DueDateBoard } from "./due-date-board";
 import { reorderColumnAction } from "@/app/actions/tasks";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+
+type BoardView = "status" | "due";
+const VIEW_KEY = "jarvis:board-view";
 
 const COLUMNS: { id: TaskStatus; label: string }[] = [
   { id: "backlog", label: "Backlog" },
@@ -49,6 +55,8 @@ export function BoardPage({
   const [activeId, setActiveId] = useState<string | null>(null);
   const [openTaskId, setOpenTaskId] = useState<string | null>(null);
   const [calendarOpen, setCalendarOpen] = useState(false);
+  // "status" = classic kanban (default); "due" = grouped by due date.
+  const [view, setView] = useState<BoardView>("status");
   const [, startTransition] = useTransition();
   const router = useRouter();
   // Captured at drag-start so we can detect a "transition into Done" on drop.
@@ -121,6 +129,25 @@ export function BoardPage({
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, []);
+
+  // Restore the last-used board view.
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem(VIEW_KEY);
+      if (saved === "status" || saved === "due") setView(saved);
+    } catch {
+      // localStorage unavailable — keep the default.
+    }
+  }, []);
+
+  function changeView(next: BoardView) {
+    setView(next);
+    try {
+      window.localStorage.setItem(VIEW_KEY, next);
+    } catch {
+      // ignore — choice just won't persist
+    }
+  }
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -243,6 +270,7 @@ export function BoardPage({
     }
   }
 
+  const critical = visibleTasks.filter((t) => t.priority === "critical" && t.status !== "done").length;
   const high = visibleTasks.filter((t) => t.priority === "high" && t.status !== "done").length;
   const blocked = byColumn.blocked.length;
 
@@ -276,10 +304,13 @@ export function BoardPage({
           </span>
           <small className="block font-sans text-sm font-semibold text-[var(--color-ink-mid)] mt-2 tracking-normal">
             {visibleTasks.length} task{visibleTasks.length === 1 ? "" : "s"}
-            {hasFilter && " visible"} · {high} high priority · {blocked} blocked
+            {hasFilter && " visible"}
+            {critical > 0 && ` · ${critical} critical`} · {high} high priority ·{" "}
+            {blocked} blocked
           </small>
         </h2>
         <div className="flex items-center gap-3">
+          <ViewToggle view={view} onChange={changeView} />
           <Button variant="icon" aria-label="Search">
             <Search size={20} strokeWidth={2.4} />
           </Button>
@@ -319,14 +350,22 @@ export function BoardPage({
         </div>
       )}
 
-      <DndContext
-        id="jarvis-board"
-        sensors={sensors}
-        collisionDetection={closestCorners}
-        onDragStart={onDragStart}
-        onDragOver={onDragOver}
-        onDragEnd={onDragEnd}
-      >
+      {view === "due" ? (
+        <DueDateBoard
+          tasks={visibleTasks}
+          projects={projects}
+          goals={goals}
+          onOpen={setOpenTaskId}
+        />
+      ) : (
+        <DndContext
+          id="jarvis-board"
+          sensors={sensors}
+          collisionDetection={closestCorners}
+          onDragStart={onDragStart}
+          onDragOver={onDragOver}
+          onDragEnd={onDragEnd}
+        >
         <div className="grid grid-cols-5 gap-3.5 flex-1 overflow-hidden min-h-0">
           {COLUMNS.map((col) => (
             <Column
@@ -351,7 +390,8 @@ export function BoardPage({
             />
           ) : null}
         </DragOverlay>
-      </DndContext>
+        </DndContext>
+      )}
 
       <TaskDrawer
         taskId={openTaskId}
@@ -359,6 +399,13 @@ export function BoardPage({
         projects={projects}
         goals={goals}
         onClose={() => setOpenTaskId(null)}
+      />
+
+      <CriticalTasksAlert
+        tasks={tasks}
+        projects={projects}
+        goals={goals}
+        onOpenTask={setOpenTaskId}
       />
 
       <CompletedCalendar
@@ -373,6 +420,60 @@ export function BoardPage({
         }}
       />
     </>
+  );
+}
+
+function ViewToggle({
+  view,
+  onChange,
+}: {
+  view: BoardView;
+  onChange: (v: BoardView) => void;
+}) {
+  const options: { id: BoardView; label: string; icon: typeof LayoutGrid }[] = [
+    { id: "status", label: "Status", icon: LayoutGrid },
+    { id: "due", label: "Due date", icon: CalendarClock },
+  ];
+  return (
+    <div
+      className="inline-flex items-center p-1 rounded-[16px] bg-[var(--color-bg)]"
+      style={{ boxShadow: "inset 0 2px 5px rgba(45,75,156,0.12)" }}
+      role="tablist"
+      aria-label="Board view"
+    >
+      {options.map((opt) => {
+        const active = view === opt.id;
+        const Icon = opt.icon;
+        return (
+          <button
+            key={opt.id}
+            type="button"
+            role="tab"
+            aria-selected={active}
+            onClick={() => onChange(opt.id)}
+            className={cn(
+              "inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-[12px] text-[13px] font-extrabold transition-all",
+              active
+                ? "text-white"
+                : "text-[var(--color-ink-mid)] hover:text-[var(--color-ink)]",
+            )}
+            style={
+              active
+                ? {
+                    background:
+                      "linear-gradient(160deg, var(--color-clay-sky), var(--color-clay-deep))",
+                    boxShadow:
+                      "0 5px 11px -3px rgba(85,145,235,0.5), inset 0 2px 0 rgba(255,255,255,0.4)",
+                  }
+                : undefined
+            }
+          >
+            <Icon size={15} strokeWidth={2.6} />
+            {opt.label}
+          </button>
+        );
+      })}
+    </div>
   );
 }
 

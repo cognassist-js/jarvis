@@ -28,13 +28,6 @@ export function TaskCard({
     isDragging,
   } = useSortable({ id: task.id });
 
-  const project = projects.find((p) => p.id === task.projectId);
-  const goal = project?.goalId
-    ? goals.find((g) => g.id === project.goalId)
-    : undefined;
-  const goalColor = goal?.color ?? "#6ba6f5";
-  const variant = pickVariant(goalColor);
-
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition,
@@ -64,6 +57,64 @@ export function TaskCard({
         isDone && "opacity-70",
       )}
     >
+      <TaskCardInner task={task} goals={goals} projects={projects} isDone={isDone} />
+    </button>
+  );
+}
+
+/**
+ * Non-draggable card used by the due-date board view, which renders outside of
+ * any DnD context. Same visual as TaskCard, minus the drag affordances.
+ */
+export function StaticTaskCard({
+  task,
+  goals,
+  projects,
+  onClick,
+}: {
+  task: Task;
+  goals: Goal[];
+  projects: Project[];
+  onClick?: () => void;
+}) {
+  const isBlocked = task.status === "blocked";
+  const isDone = task.status === "done";
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "text-left px-4 py-3.5 rounded-[22px] cursor-pointer transition-all w-full",
+        "clay-card",
+        "hover:-translate-y-[4px] hover:-rotate-[0.5deg]",
+        isBlocked && "[box-shadow:0_10px_20px_-6px_rgba(239,116,114,0.3),inset_0_3px_0_rgba(255,255,255,0.9),inset_0_-3px_6px_rgba(239,116,114,0.1),0_0_0_2px_var(--color-clay-coral)]",
+        isDone && "opacity-70",
+      )}
+    >
+      <TaskCardInner task={task} goals={goals} projects={projects} isDone={isDone} />
+    </button>
+  );
+}
+
+function TaskCardInner({
+  task,
+  goals,
+  projects,
+  isDone,
+}: {
+  task: Task;
+  goals: Goal[];
+  projects: Project[];
+  isDone: boolean;
+}) {
+  const project = projects.find((p) => p.id === task.projectId);
+  const goal = project?.goalId
+    ? goals.find((g) => g.id === project.goalId)
+    : undefined;
+  const variant = pickVariant(goal?.color ?? "#6ba6f5");
+
+  return (
+    <>
       <div className="flex justify-between items-center mb-2.5">
         <span
           className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-extrabold uppercase tracking-[0.04em] truncate max-w-[140px]"
@@ -110,12 +161,19 @@ export function TaskCard({
       <div className="flex items-center justify-between text-xs text-[var(--color-ink-mid)] font-bold">
         <DueDate task={task} />
       </div>
-    </button>
+    </>
   );
 }
 
 function PriorityDot({ priority }: { priority: Task["priority"] }) {
   const styles: Record<Task["priority"], React.CSSProperties> = {
+    critical: {
+      background:
+        "linear-gradient(160deg, #ff5a5f, #c81e2b)",
+      color: "white",
+      boxShadow:
+        "0 6px 13px -2px rgba(200,30,43,0.6), inset 0 2px 0 rgba(255,255,255,0.4), inset 0 -2px 4px rgba(0,0,0,0.2)",
+    },
     high: {
       background:
         "linear-gradient(160deg, var(--color-clay-coral), var(--color-clay-coral-2))",
@@ -137,7 +195,7 @@ function PriorityDot({ priority }: { priority: Task["priority"] }) {
         "0 4px 8px -2px rgba(45,75,156,0.2), inset 0 2px 0 rgba(255,255,255,0.7)",
     },
   };
-  const chars = { high: "!", medium: "·", low: "–" };
+  const chars = { critical: "‼", high: "!", medium: "·", low: "–" };
   return (
     <span
       aria-label={`Priority: ${priority}`}
@@ -180,6 +238,7 @@ function DueDate({ task }: { task: Task }) {
   }
   const late = isPast(d) && !isToday(d);
   const soon = isToday(d) || isTomorrow(d);
+  const critical = task.priority === "critical";
   const label = isToday(d)
     ? "Today"
     : isTomorrow(d)
@@ -197,6 +256,22 @@ function DueDate({ task }: { task: Task }) {
         }}
       >
         {label} · late
+      </span>
+    );
+  }
+  // For critical tasks the due date is a hard, business-critical deadline —
+  // surface it emphatically even when it isn't late or imminent yet.
+  if (critical) {
+    return (
+      <span
+        className="inline-flex items-center px-2.5 py-1 rounded-[10px] text-white"
+        style={{
+          background: "linear-gradient(160deg, #ff5a5f, #c81e2b)",
+          boxShadow:
+            "0 4px 8px -2px rgba(200,30,43,0.5), inset 0 2px 0 rgba(255,255,255,0.3)",
+        }}
+      >
+        {label} · due
       </span>
     );
   }

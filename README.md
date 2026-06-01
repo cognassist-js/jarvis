@@ -45,9 +45,9 @@ The pre-commit hook in `.githooks/pre-commit` blocks accidental commits of `*.db
 `.env.local`:
 
 ```
-AI_GATEWAY_API_KEY=     # required for chat
+OPENAI_API_KEY=         # required for chat — get one at platform.openai.com/api-keys
 USER_NAME=James         # the name Jarvis calls you
-JARVIS_MODEL=anthropic/claude-sonnet-4.6  # optional override
+JARVIS_MODEL=gpt-5-mini # optional override (gpt-5, gpt-5-mini, gpt-4o, etc.)
 ```
 
 ## Keyboard shortcuts
@@ -60,7 +60,7 @@ JARVIS_MODEL=anthropic/claude-sonnet-4.6  # optional override
 
 ## Architecture (one paragraph)
 
-Next.js 16 (App Router, Turbopack) with React 19 Server Components. SQLite via `better-sqlite3` and Drizzle ORM, file lives at `./data/jarvis.db`. All UI is a single shell (`AppShell`) with a sidebar (goals + nav), main route content, and a persistent chat panel on the right — backed by Server Actions in `app/actions/*` that revalidate paths after mutation. The chat (`/api/chat`) uses Vercel AI SDK v6 (`streamText`) with `anthropic/claude-sonnet-4.6` via the AI Gateway and exposes 12 tools (CRUD over goals/projects/tasks plus a dashboard summary) wired straight into the same service-layer functions the Server Actions use. The kanban board uses `@dnd-kit` for cross-column drag and within-column reorder; updates are optimistic and reconcile via `router.refresh()` plus a custom `jarvis:refresh` event the chat dispatches when the assistant has mutated data. Dark mode is a `class="dark"` toggle on `<html>`, persisted to localStorage. No tests beyond manual smoke runs — this is a personal tool.
+Next.js 16 (App Router, Turbopack) with React 19 Server Components. SQLite via `better-sqlite3` and Drizzle ORM, file lives at `./data/jarvis.db`. All UI is a single shell (`AppShell`) with a sidebar (goals + nav), main route content, and a persistent chat panel on the right — backed by Server Actions in `app/actions/*` that revalidate paths after mutation. The chat (`/api/chat`) uses Vercel AI SDK v6 (`streamText`) with `anthropic/claude-sonnet-4.6` via the AI Gateway and exposes 12 tools (CRUD over goals/projects/tasks plus a dashboard summary) wired straight into the same service-layer functions the Server Actions use. The kanban board uses `@dnd-kit` for cross-column drag and within-column reorder; updates are optimistic and reconcile via `router.refresh()` plus a custom `jarvis:refresh` event the chat dispatches when the assistant has mutated data. On load the board raises a `CriticalTasksAlert` modal when any `critical`-priority task is overdue or due today (dismissal is remembered per day per task-set in localStorage), since for critical tasks the due date is a hard deadline. A header toggle switches between two layouts (choice persisted in localStorage): the default **Status** kanban, and a **Due date** view (`DueDateBoard`) that regroups open tasks into Overdue → Today → Tomorrow → chronological date columns (plus a trailing "No date" column), with date-pill headers — useful for deadline triage. Dark mode is a `class="dark"` toggle on `<html>`, persisted to localStorage. No tests beyond manual smoke runs — this is a personal tool.
 
 ## Project layout
 

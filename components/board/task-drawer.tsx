@@ -32,6 +32,7 @@ const PRIORITY_LABEL: Record<TaskPriority, string> = {
   low: "Low",
   medium: "Medium",
   high: "High",
+  critical: "Critical",
 };
 
 export function TaskDrawer({

@@ -290,35 +290,52 @@ function ProjectRow({
           </p>
         )}
       </div>
-      <div className="text-right shrink-0">
-        <div className="text-[28px] font-display font-black tabular-nums leading-none">
-          {project.progress}%
-        </div>
-        <div className="text-[12px] text-[var(--color-ink-mid)] font-bold mt-1">
-          {project.doneTasks}/{project.totalTasks} done
-        </div>
-        {project.dueDate && (
-          <div className="text-[11px] text-[var(--color-ink-dim)] font-semibold mt-1">
-            due {format(parseISO(project.dueDate), "MMM d")}
+      {project.dueDate ? (
+        <>
+          <div className="text-right shrink-0">
+            <div className="text-[28px] font-display font-black tabular-nums leading-none">
+              {project.progress}%
+            </div>
+            <div className="text-[12px] text-[var(--color-ink-mid)] font-bold mt-1">
+              {project.doneTasks}/{project.totalTasks} done
+            </div>
+            <div className="text-[11px] text-[var(--color-ink-dim)] font-semibold mt-1">
+              due {format(parseISO(project.dueDate), "MMM d")}
+            </div>
           </div>
-        )}
-      </div>
-      <div
-        className="w-32 h-2.5 rounded-md overflow-hidden flex-shrink-0"
-        style={{
-          background: "var(--color-bg-2)",
-          boxShadow: "inset 0 2px 4px rgba(45, 75, 156, 0.1)",
-        }}
-      >
-        <div
-          className="h-full rounded-md"
-          style={{
-            width: `${project.progress}%`,
-            background:
-              "linear-gradient(160deg, var(--color-clay-sky), var(--color-clay-deep))",
-          }}
-        />
-      </div>
+          <div
+            className="w-32 h-2.5 rounded-md overflow-hidden flex-shrink-0"
+            style={{
+              background: "var(--color-bg-2)",
+              boxShadow: "inset 0 2px 4px rgba(45, 75, 156, 0.1)",
+            }}
+          >
+            <div
+              className="h-full rounded-md"
+              style={{
+                width: `${project.progress}%`,
+                background:
+                  "linear-gradient(160deg, var(--color-clay-sky), var(--color-clay-deep))",
+              }}
+            />
+          </div>
+        </>
+      ) : (
+        <div className="text-right shrink-0">
+          <div className="text-[28px] font-display font-black tabular-nums leading-none">
+            {project.doneTasks}
+            <span className="text-[var(--color-ink-faint)] font-bold">
+              /{project.totalTasks}
+            </span>
+          </div>
+          <div className="text-[12px] text-[var(--color-ink-mid)] font-bold mt-1">
+            task{project.totalTasks === 1 ? "" : "s"} done
+          </div>
+          <div className="text-[11px] text-[var(--color-ink-faint)] font-semibold mt-1 italic">
+            no deadline
+          </div>
+        </div>
+      )}
       <div className="flex items-center gap-2 flex-shrink-0">
         <span
           role="button"
