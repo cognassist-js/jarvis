@@ -4,6 +4,7 @@ import { z } from "zod";
 import * as goalsService from "@/lib/services/goals";
 import * as projectsService from "@/lib/services/projects";
 import * as tasksService from "@/lib/services/tasks";
+import * as calendarService from "@/lib/services/calendar";
 import {
   GOAL_STATUS,
   PROJECT_STATUS,
@@ -174,6 +175,27 @@ export const jarvisTools = {
       "Get an overview of the user's current load: task counts by status, overdue tasks, and recently completed work. Use this to answer 'what should I work on today?' or 'what's overdue?'.",
     inputSchema: z.object({}),
     execute: async () => tasksService.getDashboardSummary(),
+  }),
+
+  getCalendarStatus: tool({
+    description:
+      "Check whether a Microsoft calendar is connected and when it last synced.",
+    inputSchema: z.object({}),
+    execute: async () => {
+      const conn = await calendarService.getConnection();
+      return {
+        connected: !!conn,
+        lastSyncedAt: conn?.lastSyncedAt ?? null,
+        lastSyncStatus: conn?.lastSyncStatus ?? null,
+      };
+    },
+  }),
+
+  syncCalendar: tool({
+    description:
+      "Sync the connected Microsoft calendar now, importing/updating meetings as tasks. Returns counts of created/updated/removed tasks. Errors if no calendar is connected (the user connects one on the Settings page).",
+    inputSchema: z.object({}),
+    execute: async () => calendarService.syncCalendar(),
   }),
 };
 

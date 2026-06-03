@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import {
   DndContext,
   DragOverlay,
@@ -14,7 +14,7 @@ import {
 } from "@dnd-kit/core";
 import { SortableContext, arrayMove } from "@dnd-kit/sortable";
 import { useRouter } from "next/navigation";
-import { Search, Plus, X, CalendarRange, LayoutGrid, CalendarClock } from "lucide-react";
+import { Search, Plus, X, CalendarRange, LayoutGrid, CalendarClock, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import type { Goal, Project, Task, TaskStatus } from "@/db/schema";
 import { TASK_STATUS } from "@/db/schema";
@@ -24,6 +24,7 @@ import { CompletedCalendar } from "./completed-calendar";
 import { CriticalTasksAlert } from "./critical-tasks-alert";
 import { DueDateBoard } from "./due-date-board";
 import { reorderColumnAction } from "@/app/actions/tasks";
+import { syncCalendarAction } from "@/app/actions/calendar";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -44,12 +45,14 @@ export function BoardPage({
   goals,
   activeGoalId,
   activeTag,
+  calendar,
 }: {
   tasks: Task[];
   projects: Project[];
   goals: Goal[];
   activeGoalId: string | null;
   activeTag: string | null;
+  calendar: { connected: boolean; lastSyncedAt: string | null };
 }) {
   const [tasks, setTasks] = useState<Task[]>(initialTasks);
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -57,6 +60,8 @@ export function BoardPage({
   const [calendarOpen, setCalendarOpen] = useState(false);
   // "status" = classic kanban (default); "due" = grouped by due date.
   const [view, setView] = useState<BoardView>("status");
+  const [syncing, setSyncing] = useState(false);
+  const autoSyncedRef = useRef(false);
   const [, startTransition] = useTransition();
   const router = useRouter();
   // Captured at drag-start so we can detect a "transition into Done" on drop.
@@ -148,6 +153,45 @@ export function BoardPage({
       // ignore — choice just won't persist
     }
   }
+
+  const runSync = useCallback(
+    async (opts?: { silent?: boolean }) => {
+      setSyncing(true);
+      try {
+        const r = await syncCalendarAction();
+        if (!opts?.silent) {
+          const changed = r.created + r.updated + r.removed;
+          toast.success(
+            changed === 0
+              ? "Calendar up to date"
+              : `Synced — ${r.created} new, ${r.updated} updated${r.removed ? `, ${r.removed} removed` : ""}`,
+          );
+        }
+        window.dispatchEvent(new CustomEvent("jarvis:refresh"));
+      } catch (err) {
+        if (!opts?.silent) {
+          toast.error(
+            err instanceof Error ? err.message : "Calendar sync failed",
+          );
+        }
+      } finally {
+        setSyncing(false);
+      }
+    },
+    [],
+  );
+
+  // Auto-sync on board load when connected and the last sync is stale (>5 min).
+  // Fires once per mount; the ref guards React 18/19 double-invoke in dev.
+  useEffect(() => {
+    if (!calendar.connected || autoSyncedRef.current) return;
+    const stale =
+      !calendar.lastSyncedAt ||
+      Date.now() - new Date(calendar.lastSyncedAt).getTime() > 5 * 60_000;
+    if (!stale) return;
+    autoSyncedRef.current = true;
+    runSync({ silent: true });
+  }, [calendar.connected, calendar.lastSyncedAt, runSync]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -310,6 +354,21 @@ export function BoardPage({
           </small>
         </h2>
         <div className="flex items-center gap-3">
+          {calendar.connected && (
+            <Button
+              variant="icon"
+              aria-label="Sync calendar"
+              title="Sync calendar now"
+              onClick={() => runSync()}
+              disabled={syncing}
+            >
+              <RefreshCw
+                size={19}
+                strokeWidth={2.4}
+                className={syncing ? "animate-spin" : undefined}
+              />
+            </Button>
+          )}
           <ViewToggle view={view} onChange={changeView} />
           <Button variant="icon" aria-label="Search">
             <Search size={20} strokeWidth={2.4} />

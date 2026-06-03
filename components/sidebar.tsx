@@ -9,6 +9,7 @@ import {
   Moon,
   Sun,
   X,
+  Settings,
   Tag as TagIcon,
 } from "lucide-react";
 import { useTheme } from "./theme-provider";
@@ -86,6 +87,7 @@ export function Sidebar({
       count: projects.length,
     },
     { href: "/chat", label: "Chat", icon: MessageCircle, count: null },
+    { href: "/settings", label: "Settings", icon: Settings, count: null },
   ] as const;
 
   return (

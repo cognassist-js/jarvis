@@ -58,9 +58,34 @@ JARVIS_MODEL=gpt-5-mini # optional override (gpt-5, gpt-5-mini, gpt-4o, etc.)
 | `N`             | New task                                      |
 | `Esc`           | Close drawer / dialog / palette               |
 
+## Calendar integration (Outlook / Teams)
+
+Jarvis can mirror a calendar onto the board so meetings show up as tasks and their time can be
+tracked. It uses an **ICS subscription** (read-only, one-way) — no Azure app or sign-in.
+
+1. Get a published **ICS** feed URL. For Outlook: **Calendar → Shared calendars → Publish a
+   calendar** ("Can view all details"), then copy the ICS link. **Note:** many managed work
+   tenants disable calendar publishing, so this option may be unavailable — a personal
+   Outlook/Google calendar or any other ICS feed works too.
+2. In Jarvis, go to **Settings** (sidebar) → paste the link → **Connect & sync**.
+
+Behaviour:
+
+- Meetings within the sync window (default 14 days) become tasks in an auto-created
+  **"Meetings & Admin"** project, with the meeting date as the due date and the time shown on the card.
+- **Reassign any meeting** to a different project/priority from its task drawer — those overrides
+  survive future syncs (only calendar-owned fields like title and time are refreshed).
+- Syncs automatically when the board loads (if the last sync is >5 min old) and via the **Sync now**
+  button on the board header / Settings page. You can also say *"sync my calendar"* in chat.
+- Cancelled meetings inside the window are removed on re-sync; **past meetings are kept** as open
+  tasks so you can mark them done and log time.
+
+Limitations of ICS feeds: declined meetings may still appear, publishing can be disabled by your
+org's Exchange admin, and the published feed refreshes on a provider-side delay (often 15+ min).
+
 ## Architecture (one paragraph)
 
-Next.js 16 (App Router, Turbopack) with React 19 Server Components. SQLite via `better-sqlite3` and Drizzle ORM, file lives at `./data/jarvis.db`. All UI is a single shell (`AppShell`) with a sidebar (goals + nav), main route content, and a persistent chat panel on the right — backed by Server Actions in `app/actions/*` that revalidate paths after mutation. The chat (`/api/chat`) uses Vercel AI SDK v6 (`streamText`) with `anthropic/claude-sonnet-4.6` via the AI Gateway and exposes 12 tools (CRUD over goals/projects/tasks plus a dashboard summary) wired straight into the same service-layer functions the Server Actions use. The kanban board uses `@dnd-kit` for cross-column drag and within-column reorder; updates are optimistic and reconcile via `router.refresh()` plus a custom `jarvis:refresh` event the chat dispatches when the assistant has mutated data. On load the board raises a `CriticalTasksAlert` modal when any `critical`-priority task is overdue or due today (dismissal is remembered per day per task-set in localStorage), since for critical tasks the due date is a hard deadline. A header toggle switches between two layouts (choice persisted in localStorage): the default **Status** kanban, and a **Due date** view (`DueDateBoard`) that regroups open tasks into Overdue → Today → Tomorrow → chronological date columns (plus a trailing "No date" column), with date-pill headers — useful for deadline triage. Dark mode is a `class="dark"` toggle on `<html>`, persisted to localStorage. No tests beyond manual smoke runs — this is a personal tool.
+Next.js 16 (App Router, Turbopack) with React 19 Server Components. SQLite via `better-sqlite3` and Drizzle ORM, file lives at `./data/jarvis.db`. All UI is a single shell (`AppShell`) with a sidebar (goals + nav), main route content, and a persistent chat panel on the right — backed by Server Actions in `app/actions/*` that revalidate paths after mutation. The chat (`/api/chat`) uses Vercel AI SDK v6 (`streamText`) with `anthropic/claude-sonnet-4.6` via the AI Gateway and exposes 14 tools (CRUD over goals/projects/tasks, a dashboard summary, and calendar status/sync) wired straight into the same service-layer functions the Server Actions use. The kanban board uses `@dnd-kit` for cross-column drag and within-column reorder; updates are optimistic and reconcile via `router.refresh()` plus a custom `jarvis:refresh` event the chat dispatches when the assistant has mutated data. On load the board raises a `CriticalTasksAlert` modal when any `critical`-priority task is overdue or due today (dismissal is remembered per day per task-set in localStorage), since for critical tasks the due date is a hard deadline. A header toggle switches between two layouts (choice persisted in localStorage): the default **Status** kanban, and a **Due date** view (`DueDateBoard`) that regroups open tasks into Overdue → Today → Tomorrow → chronological date columns (plus a trailing "No date" column), with date-pill headers — useful for deadline triage. An optional **calendar integration** (`lib/services/calendar.ts`) subscribes to an Outlook/Teams ICS feed and mirrors meetings into tasks (see below). Dark mode is a `class="dark"` toggle on `<html>`, persisted to localStorage. No tests beyond manual smoke runs — this is a personal tool.
 
 ## Project layout
 

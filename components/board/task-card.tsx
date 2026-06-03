@@ -2,6 +2,7 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { format, isToday, isTomorrow, isPast, parseISO } from "date-fns";
+import { Clock } from "lucide-react";
 import type { Goal, Project, Task } from "@/db/schema";
 import { pickVariant } from "@/components/sidebar";
 import { cn } from "@/lib/utils";
@@ -158,8 +159,21 @@ function TaskCardInner({
           )}
         </div>
       )}
-      <div className="flex items-center justify-between text-xs text-[var(--color-ink-mid)] font-bold">
+      <div className="flex items-center justify-between gap-2 text-xs text-[var(--color-ink-mid)] font-bold">
         <DueDate task={task} />
+        {task.source === "calendar" && task.meetingStart && (
+          <span
+            className="inline-flex items-center gap-1 px-2 py-1 rounded-[10px] whitespace-nowrap"
+            style={{
+              background: "var(--color-bg)",
+              boxShadow: "inset 0 2px 4px rgba(45,75,156,0.1)",
+            }}
+            title="Meeting from your calendar"
+          >
+            <Clock size={11} strokeWidth={3} />
+            {format(parseISO(task.meetingStart), "h:mm a")}
+          </span>
+        )}
       </div>
     </>
   );

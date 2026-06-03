@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
-import { format } from "date-fns";
-import { Trash2, X, Clock, Pencil } from "lucide-react";
+import { format, parseISO } from "date-fns";
+import { Trash2, X, Clock, Pencil, CalendarClock } from "lucide-react";
 import { toast } from "sonner";
 import type { Goal, Project, Task, TaskPriority, TaskStatus } from "@/db/schema";
 import { TASK_PRIORITY, TASK_STATUS } from "@/db/schema";
@@ -161,6 +161,20 @@ export function TaskDrawer({
         </div>
 
         <div className="flex-1 overflow-y-auto flex flex-col gap-4 pr-1">
+          {task.source === "calendar" && task.meetingStart && (
+            <div
+              className="flex items-center gap-2 px-3.5 py-2.5 rounded-[14px] text-[12.5px] font-semibold text-[var(--color-ink-mid)] clay-inset"
+              title="Synced from your calendar"
+            >
+              <CalendarClock size={15} className="text-[var(--color-clay-deep)]" />
+              <span>
+                Meeting · {format(parseISO(task.meetingStart), "EEE MMM d, h:mm a")}
+                {task.meetingEnd
+                  ? `–${format(parseISO(task.meetingEnd), "h:mm a")}`
+                  : ""}
+              </span>
+            </div>
+          )}
           <Field label="Title">
             <Input
               value={title}

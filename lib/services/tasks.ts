@@ -46,6 +46,10 @@ export async function createTask(input: CreateTaskInput): Promise<Task> {
     sortOrder: (maxSort?.m ?? -1) + 1,
     completedAt: status === "done" ? ts : null,
     timeSpentMinutes: null,
+    source: "manual" as const,
+    externalId: null,
+    meetingStart: null,
+    meetingEnd: null,
     createdAt: ts,
     updatedAt: ts,
   };

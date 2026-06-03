@@ -26,6 +26,11 @@ export type TaskStatus = (typeof TASK_STATUS)[number];
 export const TASK_PRIORITY = ["low", "medium", "high", "critical"] as const;
 export type TaskPriority = (typeof TASK_PRIORITY)[number];
 
+// Where a task originated. "calendar" tasks are owned by the ICS sync engine
+// for their calendar-derived fields (title/dates); see lib/services/calendar.ts.
+export const TASK_SOURCE = ["manual", "calendar"] as const;
+export type TaskSource = (typeof TASK_SOURCE)[number];
+
 export const CHAT_ROLE = ["user", "assistant", "tool"] as const;
 export type ChatRole = (typeof CHAT_ROLE)[number];
 
@@ -73,6 +78,27 @@ export const tasks = sqliteTable("tasks", {
   sortOrder: integer("sort_order").notNull().default(0),
   completedAt: text("completed_at"),
   timeSpentMinutes: integer("time_spent_minutes"),
+  // Calendar provenance. "manual" tasks leave the external fields null.
+  source: text("source", { enum: TASK_SOURCE }).notNull().default("manual"),
+  // Stable identity for a synced calendar event instance: `${UID}::${startISO}`.
+  // Unique so re-syncs upsert instead of duplicating; many NULLs are allowed.
+  externalId: text("external_id").unique(),
+  meetingStart: text("meeting_start"),
+  meetingEnd: text("meeting_end"),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull(),
+});
+
+// Single-row table holding the ICS calendar subscription + last-sync state.
+export const calendarConnection = sqliteTable("calendar_connection", {
+  id: text("id").primaryKey(),
+  icsUrl: text("ics_url").notNull(),
+  defaultProjectId: text("default_project_id").references(() => projects.id, {
+    onDelete: "set null",
+  }),
+  syncWindowDays: integer("sync_window_days").notNull().default(14),
+  lastSyncedAt: text("last_synced_at"),
+  lastSyncStatus: text("last_sync_status"),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
 });
@@ -111,3 +137,5 @@ export type Task = typeof tasks.$inferSelect;
 export type NewTask = typeof tasks.$inferInsert;
 export type ChatMessage = typeof chatMessages.$inferSelect;
 export type NewChatMessage = typeof chatMessages.$inferInsert;
+export type CalendarConnection = typeof calendarConnection.$inferSelect;
+export type NewCalendarConnection = typeof calendarConnection.$inferInsert;

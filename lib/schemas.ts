@@ -92,6 +92,20 @@ export const moveTaskSchema = z.object({
 });
 export type MoveTaskInput = z.infer<typeof moveTaskSchema>;
 
+export const calendarConnectionSchema = z.object({
+  // Outlook publishes either an https://…/calendar.ics URL or a webcal:// one.
+  icsUrl: z
+    .string()
+    .trim()
+    .min(1)
+    .refine(
+      (u) => /^(https?|webcal):\/\//i.test(u),
+      "Expected an https:// or webcal:// calendar URL",
+    ),
+  syncWindowDays: z.number().int().min(1).max(90).optional(),
+});
+export type CalendarConnectionInput = z.infer<typeof calendarConnectionSchema>;
+
 export const listTasksSchema = z.object({
   projectId: z.string().optional(),
   status: z.enum(TASK_STATUS).optional(),

@@ -42,6 +42,17 @@ Don't break this loop. If you add another mutation surface (e.g. a new client-si
 
 A parallel event `jarvis:new-task` opens the global new-task dialog (handled by `components/global-commands.tsx`). The board's "N" key handler and the "New task" button both dispatch this event rather than holding their own dialog state.
 
+## Calendar integration (ICS sync)
+
+`lib/services/calendar.ts` mirrors an Outlook/Teams **ICS** feed into tasks (read-only, one-way — chosen over Graph OAuth to avoid Azure setup on this local tool). Key points if you touch it:
+
+- Tasks carry provenance columns: `source` (`manual` | `calendar`), `externalId` (`${UID}::${startISO}`, unique — recurring instances are distinct), `meetingStart`, `meetingEnd`. Connection state lives in the single-row `calendar_connection` table.
+- **Override-preservation rule:** on re-sync, only calendar-owned fields (`title`, `dueDate`, `meeting*`, `description`) are updated for existing tasks. **Never** overwrite `projectId`, `priority`, `status`, `sortOrder`, `timeSpentMinutes`, or `completedAt` — that's what lets the user reassign a meeting's project/priority and have it stick.
+- Cancellation cleanup only deletes calendar tasks whose date is **inside** the sync window `[today, +windowDays]`; past meetings are deliberately kept.
+- Meetings default to the auto-created **"Meetings & Admin"** project, `status='todo'`, `priority='medium'`.
+- Entry points: `app/actions/calendar.ts` (Server Actions) and the `syncCalendar`/`getCalendarStatus` AI tools — same service layer, per the architectural rule. Sync is triggered on board load (when stale) and via "Sync now"; both dispatch `jarvis:refresh` afterward.
+- Uses `ical-expander` (wraps `ical.js`, which is untyped — see `types/ical.d.ts`) to expand recurrences within the window.
+
 ## AI SDK v6 gotchas
 
 `app/api/chat/route.ts` is the chat endpoint. Things that differ from v4/v5 training data:
